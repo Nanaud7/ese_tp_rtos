@@ -1,0 +1,9 @@
+shell.c:32:5:__io_putchar	16	static
+shell.c:37:6:uart_read	16	static
+shell.c:45:5:uart_write	16	static
+shell.c:50:6:uart_data_ready	4	static
+shell.c:54:5:sh_help	24	static
+shell.c:63:6:shell_init	16	static
+shell.c:75:5:shell_add	24	static
+shell.c:87:5:shell_exec	64	static
+shell.c:117:5:shell_run	24	static

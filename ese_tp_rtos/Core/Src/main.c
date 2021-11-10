@@ -6,7 +6,7 @@
  ******************************************************************************
  * @attention
  *
- * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
+ * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
  * All rights reserved.</center></h2>
  *
  * This software component is licensed by ST under BSD 3-Clause license,
@@ -26,6 +26,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include <stdlib.h>
+#include "shell.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -35,13 +37,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define STACK_SIZE 256
-
-#define TASK1_PRIORITY 1
-#define TASK2_PRIORITY 2
-
-#define TASK1_DELAY 1
-#define TASK2_DELAY 20
+#define STACK_SIZE 1000
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -50,9 +46,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-
 /* USER CODE BEGIN PV */
-SemaphoreHandle_t semMutex;
+char c = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -64,31 +59,42 @@ void MX_FREERTOS_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-int __io_putchar(int ch) {
-	HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
-	return ch;
+int fonction(int argc, char ** argv) {
+	printf("Fonction bidon\r\n");
+
+	printf("argc = %d\r\n", argc);
+
+	for (int i = 0 ; i < argc ; i++) {
+		printf("arg numero %d = %s\r\n", i, argv[i]);
+	}
+
+	return 0;
 }
 
-void vTask1(void * pvParameters) {
-	int delay = (int) pvParameters;
+int addition(int argc, char ** argv) {
+	// Usage : a <nombre1> <nombre2>
+	// Affiche le résultat de l'addition des deux nombres
 
-	while(1) {
-		xSemaphoreTake(semMutex,portMAX_DELAY);
-		printf("Je suis la tache 1 et je m'endors pour %d ticks\r\n", delay);
-		xSemaphoreGive(semMutex);
-		vTaskDelay(delay);
+	if (argc == 3) {
+		int a, b;
+		a = atoi(argv[1]);
+		b = atoi(argv[2]);
+		printf("%d + %d = %d\r\n", a, b, a+b);
 	}
+	else {
+		printf("Erreur: nombre d'arguments incorrect\r\n");
+		printf("Usage : %s <nombre1> <nombre2>\r\n", argv[0]);
+	}
+
+	return 0;
 }
 
-void vTask2(void * pvParameters) {
-	int delay = (int) pvParameters;
+void vTaskShell(void * p) {
+	shell_init();
+	shell_add('f', fonction, "Une fonction inutile");
+	shell_add('a', addition, "Ma super addition");
 
-	while(1) {
-		xSemaphoreTake(semMutex,portMAX_DELAY);
-		printf("Je suis la tache 2 et je m'endors pour %d ticks\r\n", delay);
-		xSemaphoreGive(semMutex);
-		vTaskDelay(delay);
-	}
+	shell_run();
 }
 /* USER CODE END 0 */
 
@@ -100,8 +106,8 @@ int main(void)
 {
 	/* USER CODE BEGIN 1 */
 	BaseType_t xReturned;
-	TaskHandle_t xHandle1 = NULL;
-	TaskHandle_t xHandle2 = NULL;
+	TaskHandle_t xHandle = NULL;
+
 	/* USER CODE END 1 */
 
 	/* MCU Configuration--------------------------------------------------------*/
@@ -110,7 +116,7 @@ int main(void)
 	HAL_Init();
 
 	/* USER CODE BEGIN Init */
-	printf("\r\n==== TP1 Q4 ====\r\n");
+
 	/* USER CODE END Init */
 
 	/* Configure the system clock */
@@ -124,13 +130,20 @@ int main(void)
 	MX_GPIO_Init();
 	MX_USART1_UART_Init();
 	/* USER CODE BEGIN 2 */
-	semMutex = xSemaphoreCreateMutex();
 
-	/* Create the task, storing the handle. */
-	xReturned = xTaskCreate(vTask1, "Tache 1", STACK_SIZE, ( void * ) TASK1_DELAY, TASK1_PRIORITY, &xHandle1);
-	configASSERT(xReturned == pdPASS);
-	xReturned = xTaskCreate(vTask2, "Tache 2", STACK_SIZE, ( void * ) TASK2_DELAY, TASK2_PRIORITY, &xHandle2);
-	configASSERT(xReturned == pdPASS);
+	HAL_UART_Receive_IT(&huart1, (uint8_t*)&c, sizeof(c));
+
+	xReturned = xTaskCreate(
+			vTaskShell,      	/* Function that implements the task. */
+			"Shell",         	/* Text name for the task. */
+			STACK_SIZE,      	/* Stack size in words, not bytes. */
+			( void * ) NULL,    /* Parameter passed into the task. */
+			1,					/* Priority at which the task is created. */
+			&xHandle );      	/* Used to pass out the created task's handle. */
+
+	if( xReturned == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY ) {
+		printf("Task Shell creation error: Could not allocate required memory\r\n");
+	}
 	/* USER CODE END 2 */
 
 	/* Call init function for freertos objects (in freertos.c) */
@@ -167,13 +180,12 @@ void SystemClock_Config(void)
 	/** Initializes the RCC Oscillators according to the specified parameters
 	 * in the RCC_OscInitTypeDef structure.
 	 */
-	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-	RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-	RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
 	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-	RCC_OscInitStruct.PLL.PLLM = 8;
-	RCC_OscInitStruct.PLL.PLLN = 216;
+	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+	RCC_OscInitStruct.PLL.PLLM = 25;
+	RCC_OscInitStruct.PLL.PLLN = 432;
 	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
 	RCC_OscInitStruct.PLL.PLLQ = 2;
 	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
@@ -208,6 +220,13 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart){
+	if(huart->Instance == USART1){
+		xQueueSendFromISR(qShell, &c, NULL);
+		HAL_UART_Receive_IT(&huart1, (uint8_t*)&c, 1);
+	}
+}
 
 /* USER CODE END 4 */
 

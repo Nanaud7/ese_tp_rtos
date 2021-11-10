@@ -8,6 +8,7 @@ C_SRCS += \
 ../Core/Src/freertos.c \
 ../Core/Src/gpio.c \
 ../Core/Src/main.c \
+../Core/Src/shell.c \
 ../Core/Src/stm32f7xx_hal_msp.c \
 ../Core/Src/stm32f7xx_hal_timebase_tim.c \
 ../Core/Src/stm32f7xx_it.c \
@@ -20,6 +21,7 @@ OBJS += \
 ./Core/Src/freertos.o \
 ./Core/Src/gpio.o \
 ./Core/Src/main.o \
+./Core/Src/shell.o \
 ./Core/Src/stm32f7xx_hal_msp.o \
 ./Core/Src/stm32f7xx_hal_timebase_tim.o \
 ./Core/Src/stm32f7xx_it.o \
@@ -32,6 +34,7 @@ C_DEPS += \
 ./Core/Src/freertos.d \
 ./Core/Src/gpio.d \
 ./Core/Src/main.d \
+./Core/Src/shell.d \
 ./Core/Src/stm32f7xx_hal_msp.d \
 ./Core/Src/stm32f7xx_hal_timebase_tim.d \
 ./Core/Src/stm32f7xx_it.d \
