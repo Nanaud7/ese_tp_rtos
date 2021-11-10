@@ -35,7 +35,13 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define STACK_SIZE 1000
+#define STACK_SIZE 256
+
+#define TASK1_PRIORITY 1
+#define TASK2_PRIORITY 2
+
+#define TASK1_DELAY 1
+#define TASK2_DELAY 20
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -46,7 +52,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-SemaphoreHandle_t semQ3;
+SemaphoreHandle_t semMutex;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -63,18 +69,25 @@ int __io_putchar(int ch) {
 	return ch;
 }
 
-void vTask1(void *p){
-	while(1){
-		printf("Task1\r\n");
-		xSemaphoreGive(semQ3);
-		vTaskDelay(1000);
+void vTask1(void * pvParameters) {
+	int delay = (int) pvParameters;
+
+	while(1) {
+		xSemaphoreTake(semMutex,portMAX_DELAY);
+		printf("Je suis la tache 1 et je m'endors pour %d ticks\r\n", delay);
+		xSemaphoreGive(semMutex);
+		vTaskDelay(delay);
 	}
 }
 
-void vTask2(void *p){
-	while(1){
-		xSemaphoreTake(semQ3,portMAX_DELAY);
-		printf("Task2\r\n");
+void vTask2(void * pvParameters) {
+	int delay = (int) pvParameters;
+
+	while(1) {
+		xSemaphoreTake(semMutex,portMAX_DELAY);
+		printf("Je suis la tache 2 et je m'endors pour %d ticks\r\n", delay);
+		xSemaphoreGive(semMutex);
+		vTaskDelay(delay);
 	}
 }
 /* USER CODE END 0 */
@@ -86,7 +99,9 @@ void vTask2(void *p){
 int main(void)
 {
 	/* USER CODE BEGIN 1 */
-
+	BaseType_t xReturned;
+	TaskHandle_t xHandle1 = NULL;
+	TaskHandle_t xHandle2 = NULL;
 	/* USER CODE END 1 */
 
 	/* MCU Configuration--------------------------------------------------------*/
@@ -95,7 +110,7 @@ int main(void)
 	HAL_Init();
 
 	/* USER CODE BEGIN Init */
-
+	printf("\r\n==== TP1 Q4 ====\r\n");
 	/* USER CODE END Init */
 
 	/* Configure the system clock */
@@ -109,30 +124,13 @@ int main(void)
 	MX_GPIO_Init();
 	MX_USART1_UART_Init();
 	/* USER CODE BEGIN 2 */
-	BaseType_t xReturned;
-	TaskHandle_t xHandle1 = NULL, xHandle2 = NULL;
+	semMutex = xSemaphoreCreateMutex();
 
-	xReturned = xTaskCreate(
-			vTask1,
-			"Task1",
-			STACK_SIZE,
-			(void *) NULL,
-			1,
-			&xHandle1);
-	if(xReturned != pdPASS) while(1){}
-
-	xReturned = xTaskCreate(
-			vTask2,
-			"Task2",
-			STACK_SIZE,
-			(void *) NULL,
-			2,
-			&xHandle2);
-	if(xReturned != pdPASS) while(1){}
-
-	semQ3 = xSemaphoreCreateBinary();
-	if(semQ3 == NULL) while(1);
-
+	/* Create the task, storing the handle. */
+	xReturned = xTaskCreate(vTask1, "Tache 1", STACK_SIZE, ( void * ) TASK1_DELAY, TASK1_PRIORITY, &xHandle1);
+	configASSERT(xReturned == pdPASS);
+	xReturned = xTaskCreate(vTask2, "Tache 2", STACK_SIZE, ( void * ) TASK2_DELAY, TASK2_PRIORITY, &xHandle2);
+	configASSERT(xReturned == pdPASS);
 	/* USER CODE END 2 */
 
 	/* Call init function for freertos objects (in freertos.c) */
@@ -242,10 +240,7 @@ void Error_Handler(void)
 {
 	/* USER CODE BEGIN Error_Handler_Debug */
 	/* User can add his own implementation to report the HAL error return state */
-	__disable_irq();
-	while (1)
-	{
-	}
+
 	/* USER CODE END Error_Handler_Debug */
 }
 
@@ -261,7 +256,7 @@ void assert_failed(uint8_t *file, uint32_t line)
 {
 	/* USER CODE BEGIN 6 */
 	/* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+     tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
 	/* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
